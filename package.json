@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "three": "^0.154.0",
+    "three-geometry-data": "^1.0.1",
+    "vite": "^4.4.3"
+  }
+}
