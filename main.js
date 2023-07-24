@@ -7,14 +7,14 @@ import * as SceneUtils from 'three/addons/utils/SceneUtils.js';
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 import getVertexData from 'three-geometry-data';
 import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader'
-import {LoopSubdivision}  from './LoopSubdivisionMain.js';
+// import {LoopSubdivision}  from './LoopSubdivisionMain.js';
 
 var container, camera, scene, renderer, user_options, orbit_ctrl, trfm_ctrl;
 
 // Subdivision surface
 var MIN_SUBD_LEVEL = 0;
 var MAX_SUBD_LEVEL = 4;
-var subd_level = 4;
+var subd_level = 2;
 var smooth_mesh;
 var smooth_verts_undeformed = [];
 var model_index = 0;
@@ -25,7 +25,7 @@ var ffd = new FFD();
 var MIN_SPAN_COUNT = 1;
 var MAX_SPAN_COUNT = 8;
 var span_counts = [2, 2, 2];
-var ctrl_pt_geom = new THREE.SphereGeometry(1);
+var ctrl_pt_geom = new THREE.SphereGeometry(3);
 var ctrl_pt_material = new THREE.MeshLambertMaterial({ color: 0x4d4dff });
 var ctrl_pt_meshes = [];
 var ctrl_pt_mesh_selected = null;
@@ -139,7 +139,6 @@ function init() {
   window.addEventListener('resize', onWindowResize, false);
 
   createEvalPtsMesh();
-  console.log("blahhh");
   addModel();
 }
 
@@ -284,8 +283,8 @@ function addModel() {
   loader.load(
     'models/gum.ply',
     function (geometry) {
-      // orig_geom = new THREE.BoxGeometry(200, 200, 200, 2, 2, 2);
-      orig_geom = geometry.clone();
+      orig_geom = new THREE.BoxGeometry(200, 200, 200, 2, 2, 2);
+      // orig_geom = geometry.clone();
       // smooth_geom = new THREE.BufferGeometry().fromGeometry(orig_geom);
       // smooth_geom = new THREE.BufferGeometry().setFromObject(new THREE.Mesh(orig_geom));
 
@@ -310,9 +309,10 @@ function addModel() {
       smooth_geom.computeVertexNormals();
 
       // subd_modifier.modify(smooth_geom);
-      var subd_modifier = LoopSubdivision.modify(smooth_geom, subd_level, params);
+      //  smooth_geom = LoopSubdivision.modify(smooth_geom, subd_level, params);
       // buffer geo
-      console.log(subd_modifier);
+
+      // console.log("subd_modifier",subd_modifier);
 
 
 
@@ -320,6 +320,7 @@ function addModel() {
 
       var faceABCD = "abcd";
       var color, f, p, n, vertexIndex, group;
+      // console.log(smooth_geom);
       // for (let i = 0; i < smooth_geom.index.array.length; i++) {
       // 	f = smooth_geom.index.array[i];
       // 	n = (f instanceof THREE.Face3) ? 3 : 4;
@@ -342,7 +343,7 @@ function addModel() {
       // Mesh for the original model
       var display_orig_mesh = false;
       if (display_orig_mesh) {
-        var orig_material = new THREE.MeshBasicMaterial({ color: 0xfefefe, wireframe: true, opacity: 0.5 });
+        var orig_material = new THREE.MeshBasicMaterial({ color: 0xfefefe, wireframe: true, opacity: 0.5, side: THREE.DoubleSide });
         var orig_mesh = new THREE.Mesh(orig_geom, orig_material);
         group.add(orig_mesh);
       }
@@ -447,7 +448,6 @@ function removeCtrlPtMeshes() {
 }
 
 function removeLatticeLines() {
-  console.log(lattice_lines);
   for (var i = 0; i < lattice_lines.length; i++)
     scene.remove(lattice_lines[i]);
   lattice_lines.length = 0;
@@ -684,6 +684,7 @@ function updateLattice() {
 function deform() {
   // Update the model vertices.
   let smooth_vertices = [];
+  console.log(smooth_geom.attributes.position.array.length);
   for (let i = 0; i < smooth_geom.attributes.position.array.length; i += 3) {
     var copy_pt = new THREE.Vector3(
       smooth_geom.attributes.position.array[i],
@@ -693,16 +694,27 @@ function deform() {
     // copy_pt.copy(smooth_geom.vertices[i]);
     smooth_vertices.push(copy_pt);
   }
+  // i < smooth_geom.attributes.position.count;
   for (let i = 0; i < smooth_geom.attributes.position.count; i++) {
     var eval_pt = ffd.evalWorld(smooth_verts_undeformed[i]);
-    if (eval_pt.equals(smooth_vertices[i]))
+    if (eval_pt.equals(smooth_vertices[i])){
+      console.log("inside deform first if", i);
       continue;
+    }
+    // console.log(i);
+    // console.log("inside if condition ",eval_pt.equals(smooth_vertices[i]));
+    console.log("before",smooth_vertices[i]);
     smooth_vertices[i].copy(eval_pt);
+    console.log("after",smooth_vertices[i]);
+
   }
-  smooth_geom.verticesNeedUpdate = true;
+  smooth_geom.attributes.position.needsUpdate = true;
+
+  // smooth_geom.verticesNeedUpdate = true;
 
   // Update the mesh for evaluated points.
   if (show_eval_pts_checked) {
+			console.log("inside deform second if");
     var multipliers = new THREE.Vector3(
       1 / eval_pt_spans.x,
       1 / eval_pt_spans.y,
@@ -725,6 +737,8 @@ function deform() {
         }
       }
     }
-    eval_pts_mesh.geometry.verticesNeedUpdate = true;
+    // eval_pts_mesh.geometry.verticesNeedUpdate = true;
+    eval_pts_mesh.geometry.attributes.position.needsUpdate = true;
+
   }
 }
